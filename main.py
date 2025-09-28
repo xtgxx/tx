@@ -20,7 +20,7 @@ user_collection = db["sujalbot"]
 OWNER = 8458169280 
 API_ID = os.getenv("API_ID", "25933223")
 API_HASH = os.getenv("API_HASH", "6ef5a426d85b7f01562a41e6416791d3")
-TOKEN = "8304211807:AAH8hU3mgC0d3AGKzicEMqHThDGMwMTyGcw"
+TOKEN = "7954564970:AAHAZssdAuEX6uyCeRpnVFSFXXSlgpteMHU"
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -58,27 +58,38 @@ def safe_send(send_fn, *args, **kwargs):
             print(f"⚠️ Error for {chat_id}: {e}")
 
 # Function to extract URLs from text
-def txt_to_html(txt_path, html_path):    
+def txt_to_html(txt_path, html_path):
     import os, html, re
+
     file_name = os.path.basename(txt_path).replace('.txt', '')
 
     with open(txt_path, 'r', encoding='utf-8') as f:
         lines = f.read().splitlines()
 
-    sections = {
-        'video': {"title": "video", "items": []},
-        'pdf': {"title": "pdf", "items": []},
-        'other': {"title": "other", "items": []}
-    }
+    # Sections dictionary
+    sections = {'video': {}, 'pdf': {}, 'other': {}}
 
     def categorize_link(name, url):
-        if re.search(r'\.(mp4|mkv|avi|mov|flv|wmv|m3u8)$', url, re.IGNORECASE) or 'youtube.com' in url or 'youtu.be' in url or 'brightcove' in url:
+        if re.search(r'\.(mp4|mkv|avi|mov|flv|wmv|m3u8)$', url, re.IGNORECASE) or \
+           'brightcove' in url:
             return 'video'
+        elif 'youtube.com' in url or 'youtu.be' in url:
+            return 'youtube'
         elif re.search(r'\.pdf$', url, re.IGNORECASE):
             return 'pdf'
         else:
             return 'other'
 
+    def extract_topic(name):
+        match = re.search(r'\[(.*?)\]', name)
+        if match:
+            return match.group(1).strip()
+        parts = name.split()
+        if parts:
+            return parts[0].strip()
+        return "Misc"
+
+    # Parsing lines
     for line in lines:
         line = line.strip()
         if not line:
@@ -88,135 +99,162 @@ def txt_to_html(txt_path, html_path):
             name, url = match.groups()
             name, url = name.strip(), url.strip()
             category = categorize_link(name, url)
-            sections[category]["items"].append((name, url))
+            topic = extract_topic(name)
+            if category == "youtube":
+                sec = "video"
+            else:
+                sec = category
+            if topic not in sections[sec]:
+                sections[sec][topic] = []
+            sections[sec][topic].append((name, url, category))
 
+    # Colour palettes
+    folder_colors = ["#FFB74D","#4DB6AC","#9575CD","#F06292","#4FC3F7","#AED581","#BA68C8","#FF8A65"]
+    card_colors = ["#FFE0B2","#B2DFDB","#D1C4E9","#F8BBD0","#B3E5FC","#DCEDC8","#E1BEE7","#FFCCBC"]
+
+    def get_folder_color(idx):
+        return folder_colors[idx % len(folder_colors)]
+
+    def get_card_color(idx):
+        return card_colors[idx % len(card_colors)]
+
+    # Building HTML blocks
     html_blocks = ""
     for key in ['video', 'pdf', 'other']:
-        section = sections[key]
-        links = []
-        for name, url in section["items"]:
-            safe_name = html.escape(name)
-            if key == 'video':
-                if 'youtube.com' in url or 'youtu.be' in url:
-                    if 'youtube.com/embed/' in url:
-                        url = url.replace("youtube.com/embed/", "youtube.com/watch?v=")
-                    links.append(f"<a href='{url}' target='_blank'><div class='card video'>{safe_name}</div></a>")
-                else:
-                    links.append(f"<div class='card video' onclick=\"playVideo('{url}', '{safe_name}')\">{safe_name}</div>")
-            elif key == 'pdf':
-                links.append(f"<a href='{url}' target='_blank'><div class='card pdf'>{safe_name}</div></a>")
-            else:
-                links.append(f"<a href='{url}' target='_blank'><div class='card other'>{safe_name}</div></a>")
+        topic_blocks = []
+        for t_idx, (topic, items) in enumerate(sections[key].items()):
+            links = []
+            for c_idx, (name, url, category) in enumerate(items):
+                safe_name = html.escape(name)
+                card_color = get_card_color(c_idx)
 
+                if category == 'youtube':
+                    links.append(f"<a href='{url}' target='_blank'><div class='card video' style='background:{card_color}'>{safe_name}</div></a>")
+                elif key == 'video':
+                    links.append(f"<div class='card video' style='background:{card_color}' onclick=\"playVideo('{url}', this)\">{safe_name}</div>")
+                elif key == 'pdf':
+                    links.append(f"<a href='{url}' target='_blank'><div class='card pdf' style='background:{card_color}'>{safe_name}</div></a>")
+                else:
+                    links.append(f"<a href='{url}' target='_blank'><div class='card other' style='background:{card_color}'>{safe_name}</div></a>")
+
+            folder_color = get_folder_color(t_idx)
+            topic_blocks.append(f"""
+            <div class='folder'>
+              <div class='folder-header' style='background:{folder_color}' onclick="toggleFolder(this)">{topic} ({len(items)})</div>
+              <div class='folder-content'>
+                {'<br>'.join(links)}
+              </div>
+            </div>
+            """)
         html_blocks += f"""
         <div class='tab-content' id='{key}' style='display: none;'>
-            {'\n'.join(links) if links else "<p>No content found</p>"}
+            {''.join(topic_blocks) if topic_blocks else "<p>No content found</p>"}
         </div>
         """
 
-    html_content = f"""<!DOCTYPE html><html><head><meta charset='utf-8'><title>{html.escape(file_name)}</title>
-  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
-  <style>
-    body {{ background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }}
-    .player-box {{ max-width: 900px; margin: auto; text-align: center; }}
-    video {{ width: 100%; border-radius: 12px; box-shadow: 0 0 15px #00ffe0; }}
-    #videoTitle {{ font-size: 20px; font-weight: bold; color: #00ffe0; margin: 10px 0 30px; }}
-    .tabs {{ display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }}
-    .tab-button {{ padding: 12px 20px; font-size: 16px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid #444; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; }}
-    .tab-button:hover {{ background: #00ffe0; color: #000; }}
-    .tab-button.active {{ background: linear-gradient(135deg, #00ffe0, #00ffa2); color: #000; box-shadow: 0 0 12px #00ffe0; }}
+    # Final HTML content
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>{html.escape(file_name)}</title>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+body {{ background: #F5F5F5; color: #212121; font-family: 'Segoe UI', sans-serif; margin:0; padding:20px; overflow-x:hidden; }}
+.player-box {{ max-width:900px; margin:auto; text-align:center; }}
+video {{ width:100%; border-radius:12px; box-shadow:0 0 15px rgba(0,0,0,0.2); }}
+.tabs {{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:20px 0; }}
+.tab-button {{ padding:12px 20px; font-size:16px; background:#E0E0E0; color:#212121; border:1px solid #BDBDBD; border-radius:8px; cursor:pointer; font-weight:bold; transition:0.3s; }}
+.tab-button:hover {{ background:#BDBDBD; }}
+.tab-button.active {{ background:#90CAF9; color:#212121; box-shadow:0 0 8px rgba(0,0,0,0.2); }}
+.card {{ padding:14px 18px; border-radius:10px; font-size:15px; font-weight:bold; transition:0.3s ease; margin-bottom:12px; cursor:pointer; color:#212121; box-shadow:0 2px 6px rgba(0,0,0,0.1); }}
+.card:hover {{ transform:scale(1.03); }}
+.folder {{ margin-bottom:12px; border-radius:8px; overflow:hidden; border:1px solid #BDBDBD; }}
+.folder-header {{ padding:12px 16px; color:#212121; font-weight:bold; cursor:pointer; transition:0.3s; }}
+.folder-header:hover {{ opacity:0.8; }}
+.folder-content {{ display:none; padding:12px; }}
+.folder.open .folder-content {{ display:block; }}
+a {{ color:inherit; text-decoration:none; }}
+.footer {{ text-align:center; margin-top:30px; font-size:13px; color:#757575; }}
+.footer a {{ color:#1E88E5; text-decoration:none; }}
+</style>
+</head>
+<body>
+<div class="player-box">
+<video id="player" controls autoplay playsinline preload="none"></video>
+</div>
+<div class="tabs">
+<button class="tab-button" onclick="showTab('video')">Video</button>
+<button class="tab-button" onclick="showTab('pdf')">PDF</button>
+<button class="tab-button" onclick="showTab('other')">Other</button>
+</div>
+{html_blocks}
+<div class="footer">Developed by <a href="https://t.me/dadajiproh">Sujal</a></div>
+<script>
+let hls;
 
-    /* common card style */
-    .card {{
-        padding: 14px 18px;
-        border-radius: 10px;
-        font-size: 15px;
-        font-weight: bold;
-        transition: 0.3s ease;
-        margin-bottom: 12px;
-        cursor: pointer;
-        color: #111;
-        background: #eee;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+function playVideo(url, el){{
+  const player=document.getElementById('player');
+
+  if(hls) {{
+    hls.destroy();
+    hls=null;
+  }}
+
+  if(Hls.isSupported() && url.endsWith(".m3u8")){{
+    hls=new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(player);
+    hls.on(Hls.Events.MANIFEST_PARSED,function() {{
+      player.play();
+    }});
+  }} else {{
+    player.src=url;
+    player.play();
+  }}
+
+  // ---- CLOSE ALL TOPIC FOLDERS ----
+  document.querySelectorAll('.folder').forEach(f=>f.classList.remove('open'));
+
+  // Keep only SUBJECT open
+  if(el){{
+    const subjectTab = el.closest('.tab-content'); 
+    if(subjectTab) {{
+      subjectTab.querySelectorAll('.folder').forEach(f=>f.classList.remove('open'));
     }}
+  }}
 
-    /* VIDEO COLOR ROTATION */
-    .video:nth-child(10n+1) {{ background: linear-gradient(135deg, #ff9a9e, #fad0c4); }}
-    .video:nth-child(10n+2) {{ background: linear-gradient(135deg, #a18cd1, #fbc2eb); }}
-    .video:nth-child(10n+3) {{ background: linear-gradient(135deg, #fbc2eb, #a6c1ee); }}
-    .video:nth-child(10n+4) {{ background: linear-gradient(135deg, #84fab0, #8fd3f4); }}
-    .video:nth-child(10n+5) {{ background: linear-gradient(135deg, #ffecd2, #fcb69f); }}
-    .video:nth-child(10n+6) {{ background: linear-gradient(135deg, #ffdde1, #ee9ca7); }}
-    .video:nth-child(10n+7) {{ background: linear-gradient(135deg, #cfd9df, #e2ebf0); }}
-    .video:nth-child(10n+8) {{ background: linear-gradient(135deg, #fdfbfb, #ebedee); }}
-    .video:nth-child(10n+9) {{ background: linear-gradient(135deg, #fddb92, #d1fdff); }}
-    .video:nth-child(10n+10) {{ background: linear-gradient(135deg, #9890e3, #b1f4cf); }}
+  window.scrollTo({{top:0,behavior:'smooth'}});
+}}
 
-    /* PDF COLOR ROTATION */
-    .pdf:nth-child(10n+1) {{ background: linear-gradient(135deg, #ff9a9e, #fad0c4); }}
-    .pdf:nth-child(10n+2) {{ background: linear-gradient(135deg, #a18cd1, #fbc2eb); }}
-    .pdf:nth-child(10n+3) {{ background: linear-gradient(135deg, #fbc2eb, #a6c1ee); }}
-    .pdf:nth-child(10n+4) {{ background: linear-gradient(135deg, #84fab0, #8fd3f4); }}
-    .pdf:nth-child(10n+5) {{ background: linear-gradient(135deg, #ffecd2, #fcb69f); }}
-    .pdf:nth-child(10n+6) {{ background: linear-gradient(135deg, #ffdde1, #ee9ca7); }}
-    .pdf:nth-child(10n+7) {{ background: linear-gradient(135deg, #cfd9df, #e2ebf0); }}
-    .pdf:nth-child(10n+8) {{ background: linear-gradient(135deg, #fdfbfb, #ebedee); }}
-    .pdf:nth-child(10n+9) {{ background: linear-gradient(135deg, #fddb92, #d1fdff); }}
-    .pdf:nth-child(10n+10) {{ background: linear-gradient(135deg, #9890e3, #b1f4cf); }}
+function showTab(tabId){{
+  const tabs=document.querySelectorAll('.tab-content');
+  tabs.forEach(tab=>tab.style.display='none');
+  document.getElementById(tabId).style.display='block';
+  const buttons=document.querySelectorAll('.tab-button');
+  buttons.forEach(btn=>btn.classList.remove('active'));
+  event.target.classList.add('active');
+}}
 
-    
-    /* OTHER COLOR ROTATION */
-    .other:nth-child(10n+1) {{ background: linear-gradient(135deg, #ff9a9e, #fad0c4); }}
-    .other:nth-child(10n+2) {{ background: linear-gradient(135deg, #a18cd1, #fbc2eb); }}
-    .other:nth-child(10n+3) {{ background: linear-gradient(135deg, #fbc2eb, #a6c1ee); }}
-    .other:nth-child(10n+4) {{ background: linear-gradient(135deg, #84fab0, #8fd3f4); }}
-    .other:nth-child(10n+5) {{ background: linear-gradient(135deg, #ffecd2, #fcb69f); }}
-    .other:nth-child(10n+6) {{ background: linear-gradient(135deg, #ffdde1, #ee9ca7); }}
-    .other:nth-child(10n+7) {{ background: linear-gradient(135deg, #cfd9df, #e2ebf0); }}
-    .other:nth-child(10n+8) {{ background: linear-gradient(135deg, #fdfbfb, #ebedee); }}
-    .other:nth-child(10n+9) {{ background: linear-gradient(135deg, #fddb92, #d1fdff); }}
-    .other:nth-child(10n+10) {{ background: linear-gradient(135deg, #9890e3, #b1f4cf); }}
+function toggleFolder(el){{
+  const allFolders=document.querySelectorAll('.folder');
+  allFolders.forEach(f=>{{ if(f!==el.parentElement) f.classList.remove('open'); }});
+  const folder=el.parentElement;
+  folder.classList.toggle('open');
+}}
 
+document.addEventListener("DOMContentLoaded",()=>{{ showTab('video'); }});
+</script>
+</body>
+</html>"""
 
-    a {{ color: inherit; text-decoration: none; }}
-    .footer {{ text-align: center; margin-top: 30px; font-size: 13px; color: #888; }}
-    .footer a {{ color: #00ffe0; }}
-  </style>
-</head><body>
-  <div class="player-box"><video id="player" controls autoplay playsinline>
-    <source src="" type="application/x-mpegURL">Your browser does not support the video tag.
-  </video><div id="videoTitle"></div></div>
-  <div class="tabs">
-    <button class="tab-button" onclick="showTab('video')">📺 video</button>
-    <button class="tab-button" onclick="showTab('pdf')">📄 pdf</button>
-    <button class="tab-button" onclick="showTab('other')">🧩 other</button>
-  </div>
-  {html_blocks}
-  <div class="footer">ᗪEᐯEᒪOᑭEᗪ ᗷY <a href="https://t.me/dadajiproh">𓍯𝙎𝙪𝙟𝙖𝙡⚝</a></div>
-  <script>
-    function playVideo(url, title) {{
-      const player = document.getElementById('player');
-      const videoTitle = document.getElementById('videoTitle');
-      player.src = url; videoTitle.textContent = title;
-      window.scrollTo({{ top: 0, behavior: 'smooth' }}); player.play();
-    }}
-    function showTab(tabId) {{
-      const tabs = document.querySelectorAll('.tab-content');
-      tabs.forEach(tab => tab.style.display = 'none');
-      document.getElementById(tabId).style.display = 'block';
-      const buttons = document.querySelectorAll('.tab-button');
-      buttons.forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-    }}
-    document.addEventListener("DOMContentLoaded", () => {{ showTab('video'); }});
-  </script>
-</body></html>"""
-
-    with open(html_path, 'w', encoding='utf-8') as f:
+    with open(html_path,'w',encoding='utf-8') as f:
         f.write(html_content)
 
-    return len(sections['video']['items']), len(sections['pdf']['items']), len(sections['other']['items'])
-
+    return sum(len(v) for v in sections['video'].values()), \
+           sum(len(v) for v in sections['pdf'].values()), \
+           sum(len(v) for v in sections['other'].values())
 
 def start_keyboard():
     keyboard = InlineKeyboardMarkup()
@@ -367,14 +405,27 @@ def handle_txt_file(message: Message):
             f"┣━ ⚝ ᴏᴛʜᴇʀ: {other_count}\n"
             f"┗━ ❂ ᴛᴏᴛᴀʟ: {video_count + pdf_count + other_count}\n"
         )
-        with open(html_path, 'rb') as html_file:
-            safe_send(bot.send_document, message.chat.id, html_file, caption=caption_text, parse_mode="Markdown")
+
+
+        with open(html_path, 'rb') as html_file, open(txt_path, 'rb') as txt_file:
+            # ✅ User ko sirf HTML bhejna
+            safe_send(bot.send_document, message.chat.id, html_file,
+                      caption=caption_text, parse_mode="Markdown")
+
             if wait_msg:
                 safe_send(bot.delete_message, message.chat.id, wait_msg.message_id)
+
+            # ✅ Channel me pehle TXT bhejna (as it is)
+            txt_file.seek(0)
+            safe_send(bot.send_document, -1003014595955, txt_file,
+                parse_mode="Markdown")
+
+            # ✅ Channel me HTML bhejna (info ke sath)
             html_file.seek(0)
             safe_send(bot.send_document, -1003014595955, html_file,
                 caption=f"📥 New TXT ➜ HTML Received\n👤 From: [{message.from_user.first_name}](tg://user?id={message.from_user.id})\n📝 File: `{original_file_name}`",
                 parse_mode="Markdown")
+
         os.remove(txt_path)
         os.remove(html_path)
 
