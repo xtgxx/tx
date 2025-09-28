@@ -20,7 +20,7 @@ user_collection = db["sujalbot"]
 OWNER = 8458169280 
 API_ID = os.getenv("API_ID", "25933223")
 API_HASH = os.getenv("API_HASH", "6ef5a426d85b7f01562a41e6416791d3")
-TOKEN = "7954564970:AAHAZssdAuEX6uyCeRpnVFSFXXSlgpteMHU"
+TOKEN = "8304211807:AAHwen_akW90XykZjmZ3HjOou5k8hUGls7w"
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
