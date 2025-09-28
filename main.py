@@ -190,7 +190,7 @@ a {{ color:inherit; text-decoration:none; }}
 <button class="tab-button" onclick="showTab('other')">Other</button>
 </div>
 {html_blocks}
-<div class="footer">Developed by <a href="https://t.me/dadajiproh">Sujal</a></div>
+<div class="footer">ᗪEᐯEᒪOᑭEᗪ ᗷY <a href="https://t.me/dadajiproh">𓍯𝙎𝙪𝙟𝙖𝙡⚝</a></div>
 <script>
 let hls;
 
