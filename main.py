@@ -279,46 +279,83 @@ def info(message: Message):
 
 REACTIONS = ["👀", "😱", "🔥", "😍", "🎉", "🥰", "😇", "⚡", "💥", "🤩"]
 
+# ---------------- FORCE SUBSCRIBE FUNCTION ----------------
+def is_subscribed(user_id):
+    channel_id = -1003489596354   # Your private channel ID
+
+    try:
+        member = bot.get_chat_member(chat_id=channel_id, user_id=user_id)
+        return member.status in ["creator", "administrator", "member"]
+    except:
+        return False
+
+
+
+# ---------------- START COMMAND ----------------
 @bot.message_handler(commands=["start"])
 def start_command(message):
-    user_state.pop(message.chat.id, None)
+    chat_id = message.chat.id
     user_id = message.from_user.id
     mention = f"[{message.from_user.first_name}](tg://user?id={user_id})"
 
-    # ✅ MongoDB me user ID save karo (agar pehle se nahi hai)
+    # -------------- FORCE SUBSCRIBE CHECK --------------
+    if not is_subscribed(user_id):
+        kb = telebot.types.InlineKeyboardMarkup()
+        kb.add(
+            telebot.types.InlineKeyboardButton(
+                "💥 Join Our Channel 💥",
+                url="https://t.me/+2q1EoC5BVyM2MjI1"
+            )
+        )
+        bot.send_message(
+            chat_id,
+            "🔴 **Please join our channel to use this bot!**\n\nAfter joining, press /start again.",
+            reply_markup=kb,
+            parse_mode="Markdown"
+        )
+        return  # Stop here if not subscribed
+    # ----------------------------------------------------
+
+    # Reset user state
+    user_state.pop(chat_id, None)
+
+    # Save user in DB
     if not user_collection.find_one({"_id": user_id}):
         user_collection.insert_one({"_id": user_id})
 
-    # 🔥 Random emoji reaction (start pe)
+    # Reaction on /start
     try:
         bot.set_message_reaction(
-            chat_id=message.chat.id,
+            chat_id=chat_id,
             message_id=message.message_id,
             reaction=[{"type": "emoji", "emoji": random.choice(REACTIONS)}]
         )
     except Exception as e:
         print(f"Reaction error: {e}")
 
-    # 📷 Random photo send
+    # Random image
     random_image_url = random.choice([
         "https://envs.sh/Qt9.jpg/IMG20250621443.jpg",
         "https://envs.sh/Fio.jpg/IMG2025070370.jpg",
         "https://envs.sh/Fir.jpg/IMG20250703829.jpg",
     ])
+
     caption = (
         f"**ʜᴇʟʟᴏ {mention}**\n\n"
         f"✿ I am a **Txt To HTML Converter Bot**\n"
         "✿ Use **/html** to convert a .txt file to .html\n\n"
         "𝐂𝐑𝐄𝐀𝐓𝐎𝐑:- [𓍯𝙎𝙪𝙟𝙖𝙡⚝](https://t.me/dadajiproh)"
     )
+
     safe_send(
         bot.send_photo,
-        message.chat.id,
+        chat_id,
         photo=random_image_url,
         caption=caption,
         parse_mode="Markdown",
         reply_markup=start_keyboard()
     )
+
 
 
 @bot.message_handler(commands=["broadcast"])
