@@ -190,7 +190,7 @@ a {{ color:inherit; text-decoration:none; }}
 <button class="tab-button" onclick="showTab('other')">Other</button>
 </div>
 {html_blocks}
-<div class="footer">ᗪEᐯEᒪOᑭEᗪ ᗷY <a href="https://t.me/dadajiproh">𓍯𝙎𝙪𝙟𝙖𝙡⚝</a></div>
+<div class="footer">ᗪEᐯEᒪOᑭEᗪ ᗷY <a href="https://t.me/selectionsevabot">𓍯𝙎𝙪𝙟𝙖𝙡⚝</a></div>
 <script>
 let hls;
 
@@ -260,7 +260,7 @@ def start_keyboard():
     keyboard = InlineKeyboardMarkup()
     keyboard.row(
         InlineKeyboardButton("ＣＨＡＮＮＥＬ", url="https://t.me/+nXeY1vDamJ5kZGVl"),
-        InlineKeyboardButton("ＯＷＮＥＲ", url="https://t.me/+nXeY1vDamJ5kZGVl")
+        InlineKeyboardButton("ＯＷＮＥＲ", url="https://t.me/selectionsevabot")
     )
     return keyboard
 
@@ -344,7 +344,7 @@ def start_command(message):
         f"**ʜᴇʟʟᴏ {mention}**\n\n"
         f"✿ I am a **Txt To HTML Converter Bot**\n"
         "✿ Use **/html** to convert a .txt file to .html\n\n"
-        "𝐂𝐑𝐄𝐀𝐓𝐎𝐑:- [𓍯𝙎𝙪𝙟𝙖𝙡⚝](https://t.me/dadajiproh)"
+        "𝐂𝐑𝐄𝐀𝐓𝐎𝐑:- [𓍯𝙎𝙪𝙟𝙖𝙡⚝](https://t.me/selectionsevabot)"
     )
 
     safe_send(
