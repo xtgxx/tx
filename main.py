@@ -20,7 +20,7 @@ user_collection = db["sujalbot"]
 OWNER = 8458169280 
 API_ID = os.getenv("API_ID", "25933223")
 API_HASH = os.getenv("API_HASH", "6ef5a426d85b7f01562a41e6416791d3")
-TOKEN = "8304211807:AAHwen_akW90XykZjmZ3HjOou5k8hUGls7w"
+TOKEN = "8304211807:AAEXkTlJbWRNtoCo98tvpaH2GnvZiggdE14"
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -281,7 +281,7 @@ REACTIONS = ["👀", "😱", "🔥", "😍", "🎉", "🥰", "😇", "⚡", "�
 
 # ---------------- FORCE SUBSCRIBE FUNCTION ----------------
 def is_subscribed(user_id):
-    channel_id = -1003489596354   # Your private channel ID
+    channel_id = -1003238402408   # Your private channel ID
 
     try:
         member = bot.get_chat_member(chat_id=channel_id, user_id=user_id)
@@ -304,7 +304,7 @@ def start_command(message):
         kb.add(
             telebot.types.InlineKeyboardButton(
                 "💥 Join Our Channel 💥",
-                url="https://t.me/+2q1EoC5BVyM2MjI1"
+                url="https://t.me/+9XlLSKDcFzs0NjNl"
             )
         )
         bot.send_message(
